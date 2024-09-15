@@ -67,7 +67,7 @@ jobs:
         Compress-Archive -Path $filesToZip -DestinationPath $zipFileName -Force
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: SteamAchievementManager-${{ env.VERSION }}
         path: SteamAchievementManager-*.zip
