@@ -1,0 +1,94 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - '*'
+    paths-ignore:
+      - 'README.md'
+
+env:
+  SOLUTION_FILE: SAM.sln
+  BUILD_CONFIGURATION: Release
+  VERSION: 7.0.${{ github.run_number }}
+
+jobs:
+  build:
+    runs-on: windows-2019
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Set VERSION variable for tags
+      if: startsWith(github.ref, 'refs/tags/')
+      run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.0.5
+
+    - name: Restore NuGet packages
+      run: nuget restore ${{ env.SOLUTION_FILE }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.nuget/packages
+          %LocalAppData%\NuGet\Cache
+          %LocalAppData%\NuGet\v3-cache
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.config') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Build solution
+      run: msbuild ${{ env.SOLUTION_FILE }} /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Version=${{ env.VERSION }} /verbosity:minimal
+
+    - name: Set timezone to GMT
+      run: tzutil /s "GMT Standard Time"
+
+    - name: Generate git log
+      run: git log . > git-log.txt
+
+    - name: Create release zip
+      run: |
+        $zipFileName = "SteamAchievementManager-${{ env.VERSION }}.zip"
+        $filesToZip = @(
+          ".\LICENSE.txt",
+          ".\git-log.txt",
+          ".\bin\${{ env.BUILD_CONFIGURATION }}\*.exe",
+          ".\bin\${{ env.BUILD_CONFIGURATION }}\*.dll"
+        )
+        Compress-Archive -Path $filesToZip -DestinationPath $zipFileName -Force
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: SteamAchievementManager-${{ env.VERSION }}
+        path: SteamAchievementManager-*.zip
+
+    - name: Create Release
+      id: create_release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ env.VERSION }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./SteamAchievementManager-${{ env.VERSION }}.zip
