@@ -53,22 +53,13 @@ jobs:
       run: tzutil /s "GMT Standard Time"
 
     - name: Generate git log
-      run: git log . > git-log.txt
+      run: git log . > upload/git-log.txt
 
-    - name: Create release zip
-      run: |
-        $zipFileName = "SteamAchievementManager-${{ env.VERSION }}.zip"
-        $filesToZip = @(
-          ".\LICENSE.txt",
-          ".\git-log.txt",
-          ".\upload\*.exe",
-          ".\upload\*.dll"
-        )
-        Compress-Archive -Path $filesToZip -DestinationPath $zipFileName -Force
+    - name: Copy license
+      run: cp LICENSE.txt upload/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: SteamAchievementManager-${{ env.VERSION }}
-        path: SteamAchievementManager-*.zip
-        
+        path: upload/
