@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-2019
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -27,16 +27,16 @@ jobs:
       run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
 
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Setup NuGet
-      uses: NuGet/setup-nuget@v1.0.5
+      uses: NuGet/setup-nuget@v2
 
     - name: Restore NuGet packages
       run: nuget restore ${{ env.SOLUTION_FILE }}
 
     - name: Cache NuGet packages
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.nuget/packages
@@ -61,8 +61,8 @@ jobs:
         $filesToZip = @(
           ".\LICENSE.txt",
           ".\git-log.txt",
-          ".\bin\${{ env.BUILD_CONFIGURATION }}\*.exe",
-          ".\bin\${{ env.BUILD_CONFIGURATION }}\*.dll"
+          ".\upload\*.exe",
+          ".\upload\*.dll"
         )
         Compress-Archive -Path $filesToZip -DestinationPath $zipFileName -Force
 
